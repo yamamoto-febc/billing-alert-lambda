@@ -1,5 +1,5 @@
 [package]
-name = "billing-alert-lambda"
+name = "bootstrap"
 version = "0.1.0"
 authors = ["Kazumichi Yamamoto <yamamoto.febc@gmail.com>"]
 edition = "2018"
@@ -10,6 +10,10 @@ edition = "2018"
 lambda_runtime="^0.4.1"
 serde = "1.0.131"
 serde_json = "1.0.59"
-rusoto_core = "0.47.0"
-rusoto_cloudwatch = "0.47.0"
+rusoto_core = {version = "0.47.0", default_features = false, features = ["rustls"]}
+rusoto_cloudwatch= {version = "0.47.0", default_features = false, features = ["rustls"]}
 tokio = { version = "^1.14.0"}
+log = "0.4.14"
+simplelog = "0.11"
+chrono = "0.4.19"
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json"]}
