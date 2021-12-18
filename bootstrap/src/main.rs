@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use lambda_runtime::{handler_fn, Context, Error};
+use lambda_runtime::{handler_fn, Context};
 use rusoto_cloudwatch::{
     CloudWatch, CloudWatchClient, Dimension, GetMetricStatisticsError, GetMetricStatisticsInput,
     GetMetricStatisticsOutput,
@@ -8,9 +8,10 @@ use rusoto_core::{Region, RusotoError};
 use serde_json::{json, Value};
 use simplelog::{Config, LevelFilter};
 use std::env;
+use std::error::Error;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), lambda_runtime::Error> {
     simplelog::SimpleLogger::init(LevelFilter::Info, Config::default()).unwrap();
 
     let func = handler_fn(func);
@@ -18,13 +19,16 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn func(_: Value, _: Context) -> Result<Value, Error> {
+async fn func(_: Value, _: Context) -> Result<Value, lambda_runtime::Error> {
     let statistics = get_estimated_charges_from_cloudwatch().await?;
-    let attachment = build_message(statistics)?;
-    post_message_to_slack(attachment).await
+    let attachment = build_message(statistics);
+    match post_message_to_slack(attachment).await {
+        Ok(v) => Ok(v),
+        Err(e) => Err(e),
+    }
 }
 
-async fn post_message_to_slack(attachment: Value) -> Result<Value, Error> {
+async fn post_message_to_slack(attachment: Value) -> Result<Value, lambda_runtime::Error> {
     let slack_post_url = env::var("SLACK_POST_URL").unwrap();
     let slack_channel = env::var("SLACK_CHANNEL").unwrap();
     log::info!(
@@ -50,7 +54,7 @@ async fn post_message_to_slack(attachment: Value) -> Result<Value, Error> {
     }))
 }
 
-fn build_message(statistics: GetMetricStatisticsOutput) -> Result<Value, Error> {
+fn build_message(statistics: GetMetricStatisticsOutput) -> Value {
     let points = statistics.datapoints.unwrap();
     let dp = points.get(0).unwrap();
 
@@ -67,10 +71,10 @@ fn build_message(statistics: GetMetricStatisticsOutput) -> Result<Value, Error> 
     };
 
     let text = format!("{}までのAWSの料金は、${}です。", date, cost);
-    return Ok(json!({
+    return json!({
         "text": text,
         "color": color,
-    }));
+    });
 }
 
 async fn get_estimated_charges_from_cloudwatch(
