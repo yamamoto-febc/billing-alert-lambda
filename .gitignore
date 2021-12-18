@@ -2,3 +2,4 @@
 .env
 /target
 /tmp_target
+lambda.zip

@@ -13,15 +13,20 @@ build:
 	cargo build --release --target ${RUST_ARCH}
 
 .PHONY: buildx
-buildx: $(TARGET_BIN)
+buildx: ${TARGET_BIN}
 
-$(TARGET_BIN): $(DEPS)
+${TARGET_BIN}: ${DEPS}
 	docker run -it --rm --platform ${DOCKER_PLATFORM} \
 	  -v "$${PWD}":/usr/src/myapp -w /usr/src/myapp rust:${RUST_VERSION} \
 	  make build
 
+.PHONY: zip
+zip:  ${TARGET_ZIP}
+${TARGET_ZIP}: ${TARGET_BIN}
+	zip -j "${TARGET_ZIP}" "${TARGET_BIN}"
+
 .PHONY: run
-run: $(TARGET_BIN)
+run: ${TARGET_BIN}
 	cat event.json | docker run -i --rm \
 	  --user "$(id -u)":"$(id -g)" \
 	  -e DOCKER_LAMBDA_USE_STDIN=1 \
@@ -30,14 +35,10 @@ run: $(TARGET_BIN)
 	  -e SLACK_CHANNEL \
 	  -v "${RELEASE_DIR}":/var/task lambci/lambda:provided.al2
 
-.PHONY: zip
-zip:  $(TARGET_ZIP)
-$(TARGET_ZIP): $(TARGET_BIN)
-	zip -j "$(TARGET_ZIP)" "$(TARGET_BIN)"
 
 .PHONY: clean
 clean:
-	rm -f "$(TARGET_ZIP)"; \
+	rm -f "${TARGET_ZIP}"; \
 	cargo clean
 
 .PHONY: fmt
